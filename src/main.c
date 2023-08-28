@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include "upng.h"
 #include "array.h"
 #include "display.h"
@@ -60,9 +60,9 @@ void setup(void) {
 
     // Loads mesh entities
     load_mesh("./assets/runway.obj", "./assets/runway.png", vec3_new(1, 1, 1), vec3_new(0, -1.5, +23), vec3_new(0, 0, 0));
-    load_mesh("./assets/f22.obj",    "./assets/f22.png",    vec3_new(1, 1, 1), vec3_new(0, -1.3, +5),  vec3_new(0, M_PI / 2.0, 0));
-    load_mesh("./assets/efa.obj",    "./assets/efa.png",    vec3_new(1, 1, 1), vec3_new(-2, -1.3, +9), vec3_new(0, M_PI / 2.0, 0));
-    load_mesh("./assets/f117.obj",   "./assets/f117.png",   vec3_new(1, 1, 1), vec3_new(+2, -1.3, +9), vec3_new(0, M_PI / 2.0, 0));
+    load_mesh("./assets/f22.obj", "./assets/f22.png", vec3_new(1, 1, 1), vec3_new(0, -1.3, +5), vec3_new(0, M_PI / 2.0, 0));
+    load_mesh("./assets/efa.obj", "./assets/efa.png", vec3_new(1, 1, 1), vec3_new(-2, -1.3, +9), vec3_new(0, M_PI / 2.0, 0));
+    load_mesh("./assets/f117.obj", "./assets/f117.png", vec3_new(1, 1, 1), vec3_new(+2, -1.3, +9), vec3_new(0, M_PI / 2.0, 0));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -219,22 +219,7 @@ void process_graphics_pipeline_stages(mesh_t* mesh) {
             transformed_vertices[v] = transformed_vertex;
         }
 
-        // Calculate the triangle face normal
         vec3_t face_normal = get_triangle_normal(transformed_vertices);
-
-        // Backface culling test to see if the current face should be projected
-        if (should_cull_backface()) {
-            // Find the vector between vertex A in the triangle and the camera origin
-            vec3_t camera_ray = vec3_sub(vec3_new(0, 0, 0), vec3_from_vec4(transformed_vertices[0]));
-
-            // Calculate how aligned the camera ray is with the face normal (using dot product)
-            float dot_normal_camera = vec3_dot(face_normal, camera_ray);
-
-            // Backface culling, bypassing triangles that are looking away from the camera
-            if (dot_normal_camera < 0) {
-                continue;
-            }
-        }
         
         // Create a polygon from the original transformed triangle to be clipped
         polygon_t polygon = polygon_from_triangle(
@@ -385,7 +370,7 @@ void render(void) {
 
         // Draw triangle wireframe
         if (should_render_wire()) {
-            draw_triangle(
+            draw_wire_triangle(
                 triangle.points[0].x, triangle.points[0].y, // vertex A
                 triangle.points[1].x, triangle.points[1].y, // vertex B
                 triangle.points[2].x, triangle.points[2].y, // vertex C
