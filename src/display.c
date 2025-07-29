@@ -7,8 +7,8 @@ static uint32_t* colorbuffer = NULL;
 static float* zbuffer = NULL;
 
 static SDL_Texture* colorbuffer_texture = NULL;
-static int window_width = 320;
-static int window_height = 200;
+static int window_width = 800;
+static int window_height = 600;
 
 static int render_method = 0;
 static int cull_method = 0;
@@ -22,37 +22,28 @@ int get_window_height(void) {
 }
 
 bool init_window(void) {
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) {
         fprintf(stderr, "Error initializing SDL.\n");
         return false;
     }
 
-    // Set width and height of the SDL window with the max screen resolution
-    SDL_DisplayMode display_mode;
-    SDL_GetCurrentDisplayMode(0, &display_mode);
-    int fullscreen_width = display_mode.w;
-    int fullscreen_height = display_mode.h;
-
-    window_width = fullscreen_width / 2;
-    window_height = fullscreen_height / 2;
-
     // Create a SDL Window
-    window = SDL_CreateWindow(NULL, 0, 0, fullscreen_width, fullscreen_height, SDL_WINDOW_BORDERLESS);
+    window = SDL_CreateWindow(NULL, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, window_width, window_height, 0);
     if (!window) {
         fprintf(stderr, "Error creating SDL window.\n");
         return false;
     }
 
     // Create a SDL renderer
-    renderer = SDL_CreateRenderer(window, -1, 0);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer) {
         fprintf(stderr, "Error creating SDL renderer.\n");
         return false;
     }
 
     // Allocate the required memory in bytes to hold the color buffer and the z-buffer
-    colorbuffer = (uint32_t*)malloc(sizeof(uint32_t) * window_width * window_height);
-    zbuffer = (float*)malloc(sizeof(float) * window_width * window_height);
+    colorbuffer = (uint32_t*) malloc(sizeof(uint32_t) * window_width * window_height);
+    zbuffer = (float*) malloc(sizeof(float) * window_width * window_height);
 
     // Creating a SDL texture that is used to display the color buffer
     colorbuffer_texture = SDL_CreateTexture(
@@ -62,6 +53,9 @@ bool init_window(void) {
         window_width,
         window_height
     );
+
+    // Locks mouse and hides cursor
+    SDL_SetRelativeMouseMode(1);
     
     return true;
 }
@@ -115,14 +109,14 @@ void draw_grid(void) {
     }
 }
 
-void draw_pixel(int x, int y, uint32_t color) {
+inline void draw_pixel(int x, int y, uint32_t color) {
     if (x < 0 || x >= window_width || y < 0 || y >= window_height) {
         return;
     }
     colorbuffer[(window_width * y) + x] = color;
 }
 
-void draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
+inline void draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
     int delta_x = (x1 - x0);
     int delta_y = (y1 - y0);
 

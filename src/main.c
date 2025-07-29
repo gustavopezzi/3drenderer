@@ -19,7 +19,9 @@
 ///////////////////////////////////////////////////////////////////////////////
 bool is_running = false;
 int previous_frame_time = 0;
-float delta_time = 0; 
+float delta_time = 0;
+
+uint32_t fps, last_fps;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Array to store triangles that should be rendered each frame
@@ -59,10 +61,13 @@ void setup(void) {
     init_frustum_planes(fov_x, fov_y, znear, zfar);
 
     // Loads mesh entities
+    // load_mesh("./assets/cat.obj", "./assets/cat.png", vec3_new(1, 1, 1), vec3_new(0, 0, +5), vec3_new(0, 0, 0));
+
+    // Loads mesh entities
     load_mesh("./assets/runway.obj", "./assets/runway.png", vec3_new(1, 1, 1), vec3_new(0, -1.5, +23), vec3_new(0, 0, 0));
-    load_mesh("./assets/f22.obj", "./assets/f22.png", vec3_new(1, 1, 1), vec3_new(0, -1.3, +5), vec3_new(0, M_PI / 2.0, 0));
-    load_mesh("./assets/efa.obj", "./assets/efa.png", vec3_new(1, 1, 1), vec3_new(-2, -1.3, +9), vec3_new(0, M_PI / 2.0, 0));
-    load_mesh("./assets/f117.obj", "./assets/f117.png", vec3_new(1, 1, 1), vec3_new(+2, -1.3, +9), vec3_new(0, M_PI / 2.0, 0));
+    load_mesh("./assets/f22.obj", "./assets/f22.png", vec3_new(1, 1, 1), vec3_new(0, -1.3, +5), vec3_new(0, -M_PI/2, 0));
+    load_mesh("./assets/efa.obj", "./assets/efa.png", vec3_new(1, 1, 1), vec3_new(-2, -1.3, +9), vec3_new(0, -M_PI/2, 0));
+    load_mesh("./assets/f117.obj", "./assets/f117.png", vec3_new(1, 1, 1), vec3_new(+2, -1.3, +9), vec3_new(0, -M_PI/2, 0));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -76,68 +81,52 @@ void process_input(void) {
                 is_running = false;
                 break;
             }
+            case SDL_MOUSEMOTION: {
+                float sensitivity = 0.07f;
+                float yaw = event.motion.xrel * sensitivity;
+                float pitch = event.motion.yrel * sensitivity;
+                rotate_camera_yaw(yaw * delta_time);
+                rotate_camera_pitch(pitch * delta_time);
+                break;
+            }
+            case SDL_MOUSEWHEEL: {
+                float speed = 20.0f;
+                if (event.wheel.y > 0) {
+                    update_camera_forward_velocity(vec3_mul(get_camera_direction(), speed * delta_time));
+                    update_camera_position(vec3_add(get_camera_position(), get_camera_forward_velocity()));
+                } else if (event.wheel.y < 0) {
+                    update_camera_forward_velocity(vec3_mul(get_camera_direction(), speed * delta_time));
+                    update_camera_position(vec3_sub(get_camera_position(), get_camera_forward_velocity()));
+                }
+                break;
+            }
             case SDL_KEYDOWN: {
                 if (event.key.keysym.sym == SDLK_ESCAPE) {
                     is_running = false;
-                    break;
                 }
                 if (event.key.keysym.sym == SDLK_1) {
                     set_render_method(RENDER_WIRE_VERTEX);
-                    break;
                 }
                 if (event.key.keysym.sym == SDLK_2) {
                     set_render_method(RENDER_WIRE);
-                    break;
                 }
                 if (event.key.keysym.sym == SDLK_3) {
                     set_render_method(RENDER_FILL_TRIANGLE);
-                    break;
                 }
                 if (event.key.keysym.sym == SDLK_4) {
                     set_render_method(RENDER_FILL_TRIANGLE_WIRE);
-                    break;
                 }
                 if (event.key.keysym.sym == SDLK_5) {
                     set_render_method(RENDER_TEXTURED);
-                    break;
                 }
                 if (event.key.keysym.sym == SDLK_6) {
                     set_render_method(RENDER_TEXTURED_WIRE);
-                    break;
                 }
                 if (event.key.keysym.sym == SDLK_c) {
                     set_cull_method(CULL_BACKFACE);
-                    break;
                 }
                 if (event.key.keysym.sym == SDLK_x) {
                     set_cull_method(CULL_NONE);
-                    break;
-                }
-                if (event.key.keysym.sym == SDLK_w) {
-                    rotate_camera_pitch(-3.0 * delta_time);
-                    break;
-                }
-                if (event.key.keysym.sym == SDLK_s) {
-                    rotate_camera_pitch(+3.0 * delta_time);
-                    break;
-                }
-                if (event.key.keysym.sym == SDLK_RIGHT) {
-                    rotate_camera_yaw(-1.0 * delta_time);
-                    break;
-                }
-                if (event.key.keysym.sym == SDLK_LEFT) {
-                    rotate_camera_yaw(+1.0 * delta_time);
-                    break;
-                }
-                if (event.key.keysym.sym == SDLK_UP) {
-                    update_camera_forward_velocity(vec3_mul(get_camera_direction(), 5.0 * delta_time));
-                    update_camera_position(vec3_add(get_camera_position(), get_camera_forward_velocity()));
-                    break;
-                }
-                if (event.key.keysym.sym == SDLK_DOWN) {
-                    update_camera_forward_velocity(vec3_mul(get_camera_direction(), 5.0 * delta_time));
-                    update_camera_position(vec3_sub(get_camera_position(), get_camera_forward_velocity()));
-                    break;
                 }
                 break;
             }
@@ -219,7 +208,22 @@ void process_graphics_pipeline_stages(mesh_t* mesh) {
             transformed_vertices[v] = transformed_vertex;
         }
 
+        // Calculate the triangle face normal
         vec3_t face_normal = get_triangle_normal(transformed_vertices);
+
+        // Backface culling test to see if the current face should be projected
+        if (should_cull_backface()) {
+            // Find the vector between vertex A in the triangle and the camera origin
+            vec3_t camera_ray = vec3_sub(vec3_new(0, 0, 0), vec3_from_vec4(transformed_vertices[0]));
+
+            // Calculate how aligned the camera ray is with the face normal (using dot product)
+            float dot_normal_camera = vec3_dot(face_normal, camera_ray);
+
+            // Backface culling, bypassing triangles that are looking away from the camera
+            if (dot_normal_camera < 0) {
+                continue;
+            }
+        }
         
         // Create a polygon from the original transformed triangle to be clipped
         polygon_t polygon = polygon_from_triangle(
@@ -304,18 +308,17 @@ void process_graphics_pipeline_stages(mesh_t* mesh) {
 // Update function frame by frame with a fixed time step
 ///////////////////////////////////////////////////////////////////////////////
 void update(void) {
-    // Wait some time until the reach the target frame time in milliseconds
-    int time_to_wait = FRAME_TARGET_TIME - (SDL_GetTicks() - previous_frame_time);
-
-    // Only delay execution if we are running too fast
-    if (time_to_wait > 0 && time_to_wait <= FRAME_TARGET_TIME) {
-        SDL_Delay(time_to_wait);
-    }
-
     // Get a delta time factor converted to seconds to be used to update our game objects
     delta_time = (SDL_GetTicks() - previous_frame_time) / 1000.0;
 
     previous_frame_time = SDL_GetTicks();
+
+    fps++;
+    if (previous_frame_time - last_fps >= 1000) {
+        //printf("FPS: %u\n", fps);
+        fps = 0;
+        last_fps = SDL_GetTicks();
+    }
 
     // Initialize the counter of triangles to render for the current frame
     triangles_to_render_count = 0;
@@ -323,11 +326,6 @@ void update(void) {
     // Loop all scene meshes
     for (int mesh_index = 0; mesh_index < get_num_meshes(); mesh_index++) {
         mesh_t* mesh = get_mesh(mesh_index);
-
-        // Change the mesh scale, rotation, and translation values per animation frame
-        // rotate_mesh_x(mesh_index, mesh->rotation_velocity.x * delta_time);
-        // rotate_mesh_y(mesh_index, mesh->rotation_velocity.y * delta_time);
-        // rotate_mesh_z(mesh_index, mesh->rotation_velocity.z * delta_time);
 
         // Process graphics pipeline stages for each mesh
         process_graphics_pipeline_stages(mesh);
@@ -349,33 +347,32 @@ void render(void) {
         triangle_t triangle = triangles_to_render[i];
 
         // Draw filled triangle
-        if (should_render_filled_triangle()){
-            draw_filled_triangle(
-                triangle.points[0].x, triangle.points[0].y, triangle.points[0].z, triangle.points[0].w, // vertex A
-                triangle.points[1].x, triangle.points[1].y, triangle.points[1].z, triangle.points[1].w, // vertex B
-                triangle.points[2].x, triangle.points[2].y, triangle.points[2].z, triangle.points[2].w, // vertex C
-                triangle.color
-            );
+        if (should_render_filled_triangle()) {
+            vec4_t v0 = { triangle.points[0].x, triangle.points[0].y, triangle.points[0].z, triangle.points[0].w }; // vertex A
+            vec4_t v1 = { triangle.points[1].x, triangle.points[1].y, triangle.points[1].z, triangle.points[1].w }; // vertex B
+            vec4_t v2 = { triangle.points[2].x, triangle.points[2].y, triangle.points[2].z, triangle.points[2].w }; // vertex C
+            draw_filled_triangle(&v0, &v1, &v2, triangle.color);
         }
 
         // Draw textured triangle
         if (should_render_textured_triangle()) {
+            vec4_t v0 = { triangle.points[0].x, triangle.points[0].y, triangle.points[0].z, triangle.points[0].w }; // vertex A
+            vec4_t v1 = { triangle.points[1].x, triangle.points[1].y, triangle.points[1].z, triangle.points[1].w }; // vertex B
+            vec4_t v2 = { triangle.points[2].x, triangle.points[2].y, triangle.points[2].z, triangle.points[2].w }; // vertex C
             draw_textured_triangle(
-                triangle.points[0].x, triangle.points[0].y, triangle.points[0].z, triangle.points[0].w, triangle.texcoords[0].u, triangle.texcoords[0].v, // vertex A
-                triangle.points[1].x, triangle.points[1].y, triangle.points[1].z, triangle.points[1].w, triangle.texcoords[1].u, triangle.texcoords[1].v, // vertex B
-                triangle.points[2].x, triangle.points[2].y, triangle.points[2].z, triangle.points[2].w, triangle.texcoords[2].u, triangle.texcoords[2].v, // vertex C
+                &v0, triangle.texcoords[0].u, triangle.texcoords[0].v,
+                &v1, triangle.texcoords[1].u, triangle.texcoords[1].v,
+                &v2, triangle.texcoords[2].u, triangle.texcoords[2].v,
                 triangle.texture
             );
         }
 
         // Draw triangle wireframe
         if (should_render_wire()) {
-            draw_wire_triangle(
-                triangle.points[0].x, triangle.points[0].y, // vertex A
-                triangle.points[1].x, triangle.points[1].y, // vertex B
-                triangle.points[2].x, triangle.points[2].y, // vertex C
-                0xFFFFFFFF
-            );
+            vec2_t v0 = { triangle.points[0].x, triangle.points[0].y }; // Vertex A
+            vec2_t v1 = { triangle.points[1].x, triangle.points[1].y }; // Vertex B
+            vec2_t v2 = { triangle.points[2].x, triangle.points[2].y }; // Vertex C
+            draw_wire_triangle(&v0, &v1, &v2, 0xFFFFFFFF);
         }
 
         // Draw triangle vertex points

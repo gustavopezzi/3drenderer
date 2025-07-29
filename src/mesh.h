@@ -22,9 +22,9 @@ void load_mesh(char* obj_filename, char* png_filename, vec3_t scale, vec3_t tran
 mesh_t* get_mesh(int mesh_index);
 int get_num_meshes(void);
 
-void rotate_mesh_x(int mesh_index, float angle);
-void rotate_mesh_y(int mesh_index, float angle);
-void rotate_mesh_z(int mesh_index, float angle);
+inline void rotate_mesh_x(int mesh_index, float angle);
+inline void rotate_mesh_y(int mesh_index, float angle);
+inline void rotate_mesh_z(int mesh_index, float angle);
 
 void free_meshes(void);
 

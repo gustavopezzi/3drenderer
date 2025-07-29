@@ -8,10 +8,10 @@ static mesh_t meshes[MAX_NUM_MESHES];
 static int mesh_count = 0;
 
 void load_mesh_obj_data(mesh_t* mesh, char* obj_filename) {
-    FILE* file;
-    file = fopen(obj_filename, "r");
+    FILE* file = fopen(obj_filename, "r");
     char line[1024];
     tex2_t* texcoords = NULL;
+
     while (fgets(line, 1024, file)) {
         // Vertex information
         if (strncmp(line, "v ", 2) == 0) {
@@ -20,32 +20,57 @@ void load_mesh_obj_data(mesh_t* mesh, char* obj_filename) {
             array_push(meshes[mesh_count].vertices, vertex);
         }
         // Texture coordinate information
-        if (strncmp(line, "vt ", 3) == 0) {
+        else if (strncmp(line, "vt ", 3) == 0) {
             tex2_t texcoord;
             sscanf(line, "vt %f %f", &texcoord.u, &texcoord.v);
             array_push(texcoords, texcoord);
         }
         // Face information
-        if (strncmp(line, "f ", 2) == 0) {
-            int vertex_indices[3];
-            int texture_indices[3];
-            int normal_indices[3];
-            sscanf(
-                line, "f %d/%d/%d %d/%d/%d %d/%d/%d",
-                &vertex_indices[0], &texture_indices[0], &normal_indices[0],
-                &vertex_indices[1], &texture_indices[1], &normal_indices[1],
-                &vertex_indices[2], &texture_indices[2], &normal_indices[2]
+        else if (strncmp(line, "f ", 2) == 0) {
+            int v[4], vt[4], vn[4];
+            int count = sscanf(
+                line, "f %d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d",
+                &v[0], &vt[0], &vn[0],
+                &v[1], &vt[1], &vn[1],
+                &v[2], &vt[2], &vn[2],
+                &v[3], &vt[3], &vn[3]
             );
-            face_t face = {
-                .a = vertex_indices[0],
-                .b = vertex_indices[1],
-                .c = vertex_indices[2],
-                .a_uv = texcoords[texture_indices[0] - 1],
-                .b_uv = texcoords[texture_indices[1] - 1],
-                .c_uv = texcoords[texture_indices[2] - 1],
-                .color = 0xFFFFFFFF
-            };
-            array_push(meshes[mesh_count].faces, face);
+
+            if (count == 9) {
+                // Triangle
+                face_t face = {
+                    .a = v[0],
+                    .b = v[1],
+                    .c = v[2],
+                    .a_uv = texcoords[vt[0] - 1],
+                    .b_uv = texcoords[vt[1] - 1],
+                    .c_uv = texcoords[vt[2] - 1],
+                    .color = 0xFFFFFFFF
+                };
+                array_push(meshes[mesh_count].faces, face);
+            } else if (count == 12) {
+                // Quad split into two triangles: [0,1,2] and [0,2,3]
+                face_t face1 = {
+                    .a = v[0],
+                    .b = v[1],
+                    .c = v[2],
+                    .a_uv = texcoords[vt[0] - 1],
+                    .b_uv = texcoords[vt[1] - 1],
+                    .c_uv = texcoords[vt[2] - 1],
+                    .color = 0xFFFFFFFF
+                };
+                face_t face2 = {
+                    .a = v[0],
+                    .b = v[2],
+                    .c = v[3],
+                    .a_uv = texcoords[vt[0] - 1],
+                    .b_uv = texcoords[vt[2] - 1],
+                    .c_uv = texcoords[vt[3] - 1],
+                    .color = 0xFFFFFFFF
+                };
+                array_push(meshes[mesh_count].faces, face1);
+                array_push(meshes[mesh_count].faces, face2);
+            }
         }
     }
     array_free(texcoords);
@@ -81,15 +106,15 @@ int get_num_meshes(void) {
     return mesh_count;
 }
 
-void rotate_mesh_x(int mesh_index, float angle) {
+inline void rotate_mesh_x(int mesh_index, float angle) {
     meshes[mesh_index].rotation.x += angle;
 }
 
-void rotate_mesh_y(int mesh_index, float angle) {
+inline void rotate_mesh_y(int mesh_index, float angle) {
     meshes[mesh_index].rotation.y += angle;
 }
 
-void rotate_mesh_z(int mesh_index, float angle) {
+inline void rotate_mesh_z(int mesh_index, float angle) {
     meshes[mesh_index].rotation.z += angle;
 }
 

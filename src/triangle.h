@@ -6,6 +6,9 @@
 #include "vector.h"
 #include "upng.h"
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 typedef struct {
     int a;
     int b;
@@ -26,21 +29,23 @@ typedef struct {
 vec3_t get_triangle_normal(vec4_t vertices[3]);
 
 void draw_wire_triangle(
-    float x0, float y0, float x1, float y1, float x2, float y2,
+    vec2_t* v0, // Vertex 0 (screen point)
+    vec2_t* v1, // Vertex 1 (screen point)
+    vec2_t* v2, // Vertex 2 (screen point)
     uint32_t color
 );
 
 void draw_filled_triangle(
-    float x0, float y0, float z0, float w0,
-    float x1, float y1, float z1, float w1,
-    float x2, float y2, float z2, float w2,
+    vec4_t* v0, // Vertex 0
+    vec4_t* v1, // Vertex 1
+    vec4_t* v2, // Vertex 2
     uint32_t color
 );
 
 void draw_textured_triangle(
-    float x0, float y0, float z0, float w0, float tex_u0, float tex_v0,
-    float x1, float y1, float z1, float w1, float tex_u1, float tex_v1,
-    float x2, float y2, float z2, float w2, float tex_u2, float tex_v2,
+    vec4_t* v0, float v0u, float v0v, // Vertex 0, followed by its UV texture coord.
+    vec4_t* v1, float v1u, float v1v, // Vertex 1, followed by its UV texture coord.
+    vec4_t* v2, float v2u, float v2v, // Vertex 0, followed by its UV texture coord.
     upng_t* texture
 );
 
