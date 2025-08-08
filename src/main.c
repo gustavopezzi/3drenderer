@@ -53,7 +53,7 @@ void setup(void) {
     float aspect_x = (float)get_window_width() / (float)get_window_height();
     float fov_y = 3.141592 / 3.0; // the same as 180/3, or 60deg
     float fov_x = atan(tan(fov_y / 2) * aspect_x) * 2;
-    float znear = 1.0;
+    float znear = 0.6;
     float zfar = 50.0;
     proj_matrix = mat4_make_perspective(fov_y, aspect_y, znear, zfar);
 
@@ -61,13 +61,13 @@ void setup(void) {
     init_frustum_planes(fov_x, fov_y, znear, zfar);
 
     // Loads mesh entities
-    // load_mesh("./assets/cat.obj", "./assets/cat.png", vec3_new(1, 1, 1), vec3_new(0, 0, +5), vec3_new(0, 0, 0));
+    load_mesh("./assets/f22.obj", "./assets/f22.png", vec3_new(1, 1, 1), vec3_new(0, 0, +5), vec3_new(0, 0, 0));
 
     // Loads mesh entities
-    load_mesh("./assets/runway.obj", "./assets/runway.png", vec3_new(1, 1, 1), vec3_new(0, -1.5, +23), vec3_new(0, 0, 0));
-    load_mesh("./assets/f22.obj", "./assets/f22.png", vec3_new(1, 1, 1), vec3_new(0, -1.3, +5), vec3_new(0, -M_PI/2, 0));
-    load_mesh("./assets/efa.obj", "./assets/efa.png", vec3_new(1, 1, 1), vec3_new(-2, -1.3, +9), vec3_new(0, -M_PI/2, 0));
-    load_mesh("./assets/f117.obj", "./assets/f117.png", vec3_new(1, 1, 1), vec3_new(+2, -1.3, +9), vec3_new(0, -M_PI/2, 0));
+    // load_mesh("./assets/runway.obj", "./assets/runway.png", vec3_new(1, 1, 1), vec3_new(0, -1.5, +23), vec3_new(0, 0, 0));
+    // load_mesh("./assets/f22.obj", "./assets/f22.png", vec3_new(1, 1, 1), vec3_new(0, -1.3, +5), vec3_new(0, -M_PI/2, 0));
+    // load_mesh("./assets/efa.obj", "./assets/efa.png", vec3_new(1, 1, 1), vec3_new(-2, -1.3, +9), vec3_new(0, -M_PI/2, 0));
+    // load_mesh("./assets/f117.obj", "./assets/f117.png", vec3_new(1, 1, 1), vec3_new(+2, -1.3, +9), vec3_new(0, -M_PI/2, 0));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -326,7 +326,7 @@ void update(void) {
     // Loop all scene meshes
     for (int mesh_index = 0; mesh_index < get_num_meshes(); mesh_index++) {
         mesh_t* mesh = get_mesh(mesh_index);
-
+        
         // Process graphics pipeline stages for each mesh
         process_graphics_pipeline_stages(mesh);
     }
